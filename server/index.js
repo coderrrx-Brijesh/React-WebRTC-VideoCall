@@ -1,9 +1,11 @@
 const express = require("express");
+const { createServer } = require("http");
 const socketio = require("socket.io");
 const bodyParser = require("body-parser");
 
-const io = new socketio.Server({ cors: { origin: "*" } });
 const app = express();
+const server = createServer(app);
+const io = socketio(server, { cors: { origin: "*" } });
 
 app.use(bodyParser.json());
 
@@ -35,14 +37,18 @@ io.on("connection", (socket) => {
     socket.emit("[SERVER]joined-room", { emailId, roomId });
 
     // Notify other users in the room of the new connection
-    socket.broadcast.to(roomId).emit("[SERVER]user-connected-room", { emailId });
+    socket.broadcast
+      .to(roomId)
+      .emit("[SERVER]user-connected-room", { emailId });
 
     // Handle user disconnection
     socket.on("disconnect", () => {
       console.log(`User ${emailId} disconnected from room: ${roomId}`);
 
       // Notify other users in the room of the disconnection
-      socket.broadcast.to(roomId).emit("[SERVER]user-disconnected", { emailId });
+      socket.broadcast
+        .to(roomId)
+        .emit("[SERVER]user-disconnected", { emailId });
 
       // Clean up the mappings
       emailToSocket.delete(emailId);
@@ -61,8 +67,12 @@ io.on("connection", (socket) => {
 
     if (toSocketId) {
       console.log(`Sending offer to ${emailId} via socket ID: ${toSocketId}`);
-      socket.to(toSocketId).emit("[SERVER]call-made", { from: fromEmailId, offer });
-      console.log(`Call made from ${fromEmailId} to ${emailId} with offer: ${offer}`);
+      socket
+        .to(toSocketId)
+        .emit("[SERVER]call-made", { from: fromEmailId, offer });
+      console.log(
+        `Call made from ${fromEmailId} to ${emailId} with offer: ${offer}`
+      );
     } else {
       console.error(`No socket found for emailId: ${emailId}`);
     }
@@ -84,6 +94,5 @@ io.on("connection", (socket) => {
   });
 });
 
-// Start the Express server
-app.listen(3000, () => console.log("HTTP Server started at: 3000"));
-io.listen(3001, () => console.log("WebSocket Server started at: 3001"));
+// Start the server
+server.listen(3001, () => console.log("Server started at: 3001"));
